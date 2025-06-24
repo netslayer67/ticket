@@ -1,167 +1,115 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FcGoogle } from 'react-icons/fc';
+import { FaApple, FaFacebook } from 'react-icons/fa';
+
+const schema = z.object({
+  email: z.string().email('Masukkan email atau nomor yang valid'),
+});
 
 const AuthModal = ({ isOpen, onClose }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: ''
-  });
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema) });
+
+  const onSubmit = async (data) => {
     setLoading(true);
-
-    try {
-      let result;
-      if (isLogin) {
-        result = await login(formData.email, formData.password);
-      } else {
-        result = await register(formData.name, formData.email, formData.password);
-      }
-
-      if (result.success) {
-        onClose();
-        setFormData({ name: '', email: '', password: '' });
-      }
-    } catch (error) {
-      console.error('Auth error:', error);
-    } finally {
+    setTimeout(() => {
+      toast({ title: 'Lanjutkan', description: `Kode dikirim ke ${data.email}`, variant: 'default' });
       setLoading(false);
-    }
+      onClose();
+    }, 1000);
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+  const simulateSocialLogin = (provider) => {
+    toast({
+      title: `${provider} Sign-In`,
+      description: `Berhasil login dengan ${provider}.`,
+      variant: 'success'
     });
+    onClose();
   };
-
-  if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {isOpen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md glass-effect rounded-2xl p-6"
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         >
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.25 }}
+            className="bg-white dark:bg-background w-full max-w-sm mx-auto p-6 rounded-2xl shadow-2xl relative border border-border text-center"
           >
-            <X className="w-5 h-5" />
-          </button>
-
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold gradient-text mb-2">
-              {isLogin ? 'Masuk' : 'Daftar'}
-            </h2>
-            <p className="text-gray-400 text-sm">
-              {isLogin 
-                ? 'Masuk ke akun Neo Dervish Anda' 
-                : 'Buat akun Neo Dervish baru'
-              }
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-bold text-foreground mb-6">Log In/Register</h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Nama Lengkap
+                <label htmlFor="email" className="block text-sm font-medium text-left mb-1 text-muted-foreground">
+                  Email/Mobile Number
                 </label>
-                <input
+                <Input
+                  id="email"
                   type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required={!isLogin}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Masukkan nama lengkap"
+                  placeholder="Ex:+62812345678 or yourname@email.com"
+                  {...register('email')}
+                  className="w-full rounded-full py-3 px-4"
                 />
+                {errors.email && <p className="text-xs text-red-500 mt-1 text-left">{errors.email.message}</p>}
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Masukkan email"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
-                  placeholder="Masukkan password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 hover-glow"
-            >
-              {loading ? 'Memproses...' : (isLogin ? 'Masuk' : 'Daftar')}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-400 text-sm">
-              {isLogin ? 'Belum punya akun?' : 'Sudah punya akun?'}
-              <button
-                onClick={() => setIsLogin(!isLogin)}
-                className="ml-2 text-purple-400 hover:text-purple-300 font-medium"
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full py-3 font-semibold text-lg bg-muted text-muted-foreground"
               >
-                {isLogin ? 'Daftar sekarang' : 'Masuk di sini'}
-              </button>
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
+              </Button>
+            </form>
+
+            <div className="my-6 flex items-center">
+              <div className="flex-grow border-t border-border" />
+              <span className="mx-4 text-muted-foreground text-sm">or log in/register with</span>
+              <div className="flex-grow border-t border-border" />
+            </div>
+
+            <div className="space-y-3">
+              <Button onClick={() => simulateSocialLogin('Google')} variant="outline" className="w-full rounded-full py-2 bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2">
+                <FcGoogle className="w-5 h-5" /> <span>Google</span>
+              </Button>
+              <Button onClick={() => simulateSocialLogin('Apple')} variant="outline" className="w-full rounded-full py-2 bg-blue-50 text-black border border-border hover:bg-blue-100 flex items-center justify-center gap-2">
+                <FaApple className="w-5 h-5" /> <span>Apple</span>
+              </Button>
+              <Button onClick={() => simulateSocialLogin('Facebook')} variant="outline" className="w-full rounded-full py-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2">
+                <FaFacebook className="w-5 h-5" /> <span>Facebook</span>
+              </Button>
+            </div>
+
+            <p className="mt-6 text-xs text-muted-foreground">
+              By continuing, you agree to these <a href="#" className="text-primary hover:underline">Terms & Conditions</a> and acknowledge that you have been informed about our <a href="#" className="text-primary hover:underline">Privacy Notice</a>.
             </p>
-          </div>
+          </motion.div>
         </motion.div>
-      </div>
+      )}
     </AnimatePresence>
   );
 };
